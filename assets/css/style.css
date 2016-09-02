@@ -1,0 +1,14 @@
+@media (min-width: 768px) {
+    .sunfrog-wrap input[type='text'], .sunfrog-wrap input[type='password'], .sunfrog-wrap input[type='email'] {
+        width: 350px;
+    }
+}
+.sunfrog-text-box { width: 100% }
+.instruction-list {
+    background: #fff;
+    padding: 20px 15px;
+    list-style: disc inside;
+}
+.instruction-list li {
+
+}
