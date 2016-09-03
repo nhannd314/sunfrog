@@ -129,6 +129,28 @@ if ( !function_exists( 'sunfrog_valid_category_url' ) )
 }
 
 /**
+ * Check valid product URL
+ */
+
+if ( !function_exists( 'sunfrog_valid_product_url' ) )
+{
+    function sunfrog_valid_product_url($url)
+    {
+        if ( empty($url) ) return false;
+        return true;
+    }
+}
+
+if ( !function_exists( 'sunfrog_valid_css_style' ) )
+{
+    function sunfrog_valid_css_style( $str )
+    {
+        if ($str == '') return false;
+        return true;
+    }
+
+}
+/**
  * Get products page
  */
 
@@ -142,15 +164,13 @@ if ( !function_exists('sunfrog_admin_page_get_products') )
 
 /**
  * Get products by category url
- * @param $category
- * @param $category_url
  */
 
 if ( !function_exists( 'sunfrog_get_products_by_category' ) )
 {
     function sunfrog_get_products_by_category($category, $category_url)
     {
-        $str = sunfrog_curl($category_url);
+        $str = sunfrog_curl( html_entity_decode( $category_url ) );
 
         if (!$str) return;
 
@@ -161,45 +181,16 @@ if ( !function_exists( 'sunfrog_get_products_by_category' ) )
 
         $base_url = 'https://www.sunfrog.com';
 
-        // $i = 0;
         // get all category links
-        foreach ($html_base->find('.frameitWrapper') as $element)
+        $list_products = $html_base->find( '.frameitWrapper' );
+        echo 'Total product ' . sizeof( $list_products ) . '<br>';
+        $i = 1;
+        foreach ( $list_products as $element )
         {
-            // $i++;
-            // if ($i > 10) break;
             // get url of product item
-            $url = $base_url.preg_replace('/\s+/', '%20', $element->find('a', 0)->href);
-
-            echo 'Url: '.$url.'<br>';
-
-            $post_query = new WP_Query( "post_type=sunfrog&meta_key=_url&meta_value=$url&order=ASC" );
-
-            // if post not exist then insert new post
-            if ( !$post_query->have_posts() )
-            {
-                $product_detail = sunfrog_get_product_detail($url);
-
-                if ( !empty($product_detail) ) {
-                    echo 'Name: '.$product_detail['name'].'<br>';
-                    echo 'Image link: '.$product_detail['img_link'].'<br>';
-
-                    $post_id = wp_insert_post(array(
-                        'post_title' => $product_detail['name'],
-                        'post_status' => 'publish',
-                        'post_type' => 'sunfrog',
-                        'post_content' => $product_detail['description']
-                    ));
-                    // if insert successful
-                    if ( $post_id ) {
-                        // add post to category
-                        wp_set_object_terms( $post_id, $category, 'sunfrog-category');
-
-                        // add post meta
-                        add_post_meta($post_id, '_url', $url);
-                        add_post_meta($post_id, '_img_link', $product_detail['img_link']);
-                    }
-                }
-            } // end if post not exist
+            echo '<br>' . $i++ . '. ';
+            $url = html_entity_decode( $element->find('a', 0)->href );
+            sunfrog_get_single_product( $category, $url );
         }
 
         $html_base->clear();
@@ -207,22 +198,60 @@ if ( !function_exists( 'sunfrog_get_products_by_category' ) )
     }
 }
 
-
 /**
- * Get product detail by URL
- * @param $url
- * @return array|void
+ * Get products by category url
  */
 
-if ( !function_exists( 'sunfrog_get_product_detail' ) )
+if ( !function_exists( 'sunfrog_get_single_product' ) )
 {
-    function sunfrog_get_product_detail($url)
+    function sunfrog_get_single_product( $category, $url )
+    {
+        echo 'URL: ' . $url . '<br>';
+
+        $post_query = new WP_Query( "post_type=sunfrog&meta_key=_url&meta_value=$url&order=ASC" );
+
+        // if post not exist then insert new post
+        if ( !$post_query->have_posts() )
+        {
+            $product_array = sunfrog_product_array($url);
+
+            if ( !empty( $product_array ) ) {
+                echo 'Name: '.$product_array['name'].'<br>';
+                echo 'Image link: '.$product_array['img_link'].'<br>';
+
+                $post_id = wp_insert_post(array(
+                    'post_title' => $product_array['name'],
+                    'post_status' => 'publish',
+                    'post_type' => 'sunfrog',
+                    'post_content' => $product_array['description']
+                ));
+                // if insert successful
+                if ( $post_id ) {
+                    // add post to category
+                    wp_set_object_terms( $post_id, $category, 'sunfrog-category');
+
+                    // add post meta
+                    add_post_meta($post_id, '_url', $url);
+                    add_post_meta($post_id, '_img_link', $product_array['img_link']);
+                }
+            }
+        } // end if post not exist
+    }
+}
+
+/**
+ * Return product array from URL
+ */
+
+if ( !function_exists( 'sunfrog_product_array' ) )
+{
+    function sunfrog_product_array($url)
     {
         $str = sunfrog_curl($url);
 
         if ( !$str ) return array();
 
-        $product_detail = array();
+        $product_array = array();
 
         // Create a DOM object
         $html_base = new simple_html_dom();
@@ -230,18 +259,18 @@ if ( !function_exists( 'sunfrog_get_product_detail' ) )
         $html_base->load($str);
 
         // get image link
-        $product_detail['img_link'] = $html_base->find('.productFrame', 0)->find('img', 0)->src;
+        $product_array['img_link'] = $html_base->find('.productFrame', 0)->find('img', 0)->src;
 
         $product_explain = $html_base->find('.explain', 0);
         // get name
-        $product_detail['name'] = $product_explain->find('h1', 0)->innertext;
+        $product_array['name'] = $product_explain->find('h1', 0)->innertext;
         // get product description
-        $product_detail['description'] = trim( $product_explain->find('p', 1)->innertext );
+        $product_array['description'] = trim( $product_explain->find('p', 1)->innertext );
 
         $html_base->clear();
         unset($html_base);
 
-        return $product_detail;
+        return $product_array;
     }
 }
 
@@ -276,4 +305,26 @@ function sunfrog_save_meta_box( $post_id )
         $url = sanitize_text_field( $_POST['sunfrog_url'] );
         update_post_meta( $post_id, '_url', $url);
     }
+}
+
+/**
+ * Insert iframe after post content
+ */
+
+function sunfrog_insert_iframe( $content ) {
+    if ( get_option( 'sunfrog_show_iframe' ) == '1' && is_singular( 'sunfrog' ) ) {
+        $content .= sunfrog_get_product_iframe();
+    }
+    return $content;
+}
+
+/**
+ * Enqueue iframe css style
+ */
+
+function sunfrog_enqueue_iframe_css() {
+
+    $output = '<style> .sunfrog-iframe { ' . get_option( 'sunfrog_iframe_css' ) . ' } </style>';
+    echo $output;
+
 }

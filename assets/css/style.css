@@ -1,5 +1,12 @@
+.sunfrog-wrap {
+    margin-bottom: 50px;
+}
+.sunfrog-wrap label {
+    display: block;
+    margin-bottom: 2px;
+}
 @media (min-width: 768px) {
-    .sunfrog-wrap input[type='text'], .sunfrog-wrap input[type='password'], .sunfrog-wrap input[type='email'] {
+    .sunfrog-wrap input[type='text'], .sunfrog-wrap input[type='password'], .sunfrog-wrap input[type='email'], .sunfrog-wrap textarea {
         width: 350px;
     }
 }
